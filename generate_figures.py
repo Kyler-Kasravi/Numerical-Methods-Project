@@ -30,7 +30,7 @@ plt.rcParams.update({
 })
 
 #each solver takes a right-hand side function, time span, initial conditions,
-#step size, and optional args tuple for parameters.
+#step size, and optional args for parameters.
 #explicit methods evaluate f directly, implicit methods use Newton's method
 #with Jacobian to solve for the next step.
 
