@@ -35,11 +35,10 @@ plt.rcParams.update({
 #with Jacobian to solve for the next step.
 
 #forward Euler: explicit, first order. just steps forward by dt*f(t,y).
-def forward_euler(rhs, t_span, y0, dt, args=()):
-    t0, tf = t_span
-    t = np.arange(t0, tf + dt / 2, dt)
+def forward_euler(rhs, t0, tmax, y0, dt, args=()):
+    n = int((tmax - t0) / dt) + 1
+    t = np.linspace(t0, tmax, n)
     y0 = np.array(y0, dtype=float)
-    n = len(t)
     y = np.zeros((n, len(y0)))
     y[0] = y0
     for i in range(n - 1):
@@ -47,11 +46,10 @@ def forward_euler(rhs, t_span, y0, dt, args=()):
     return t, y
 
 #midpoint RK2: explicit, second order. evaluates slope at midpoint of the interval.
-def midpoint_rk2(rhs, t_span, y0, dt, args=()):
-    t0, tf = t_span
-    t = np.arange(t0, tf + dt / 2, dt)
+def midpoint_rk2(rhs, t0, tmax, y0, dt, args=()):
+    n = int((tmax - t0) / dt) + 1
+    t = np.linspace(t0, tmax, n)
     y0 = np.array(y0, dtype=float)
-    n = len(t)
     y = np.zeros((n, len(y0)))
     y[0] = y0
     for i in range(n - 1):
@@ -61,11 +59,10 @@ def midpoint_rk2(rhs, t_span, y0, dt, args=()):
     return t, y
 
 #RK4: explicit, fourth order. four function evaluations per step.
-def rk4(rhs, t_span, y0, dt, args=()):
-    t0, tf = t_span
-    t = np.arange(t0, tf + dt / 2, dt)
+def rk4(rhs, t0, tmax, y0, dt, args=()):
+    n = int((tmax - t0) / dt) + 1
+    t = np.linspace(t0, tmax, n)
     y0 = np.array(y0, dtype=float)
-    n = len(t)
     y = np.zeros((n, len(y0)))
     y[0] = y0
     for i in range(n - 1):
@@ -78,12 +75,11 @@ def rk4(rhs, t_span, y0, dt, args=()):
 
 #backward Euler: implicit, first order. solves y_{n+1} = y_n + dt*f(t_{n+1}, y_{n+1})
 #using Newton's method
-def backward_euler(rhs, t_span, y0, dt, args=()):
-    t0, tf = t_span
-    t = np.arange(t0, tf + dt / 2, dt)
+def backward_euler(rhs, t0, tmax, y0, dt, args=()):
+    n = int((tmax - t0) / dt) + 1
+    t = np.linspace(t0, tmax, n)
     y0 = np.array(y0, dtype=float)
     m = len(y0)
-    n = len(t)
     y = np.zeros((n, m))
     y[0] = y0
     I_m = np.eye(m) #identity matrix for Newton solve
@@ -109,12 +105,11 @@ def backward_euler(rhs, t_span, y0, dt, args=()):
 
 #Crank-Nicolson: implicit, second order. averages forward and backward Euler slopes.
 #uses Newton's method with numerical Jacobian.
-def crank_nicolson(rhs, t_span, y0, dt, args=()):
-    t0, tf = t_span
-    t = np.arange(t0, tf + dt / 2, dt)
+def crank_nicolson(rhs, t0, tmax, y0, dt, args=()):
+    n = int((tmax - t0) / dt) + 1
+    t = np.linspace(t0, tmax, n)
     y0 = np.array(y0, dtype=float)
     m = len(y0)
-    n = len(t)
     y = np.zeros((n, m))
     y[0] = y0
     I_m = np.eye(m)
@@ -184,7 +179,7 @@ sigma_demo = 10.0           #fast latency -> stiffness
 gamma_demo = 1.0 / 14.0    #14-day recovery
 seir_args = (beta_demo, sigma_demo, gamma_demo)
 y0_demo = [1.0 - 20 / N, 10 / N, 10 / N, 0.0] #ICs: almost all susceptible, small E and I
-t_span_demo = (0, 80)
+t0_demo, tf_demo = 0, 80
 
 def main():
     print("=" * 60)
@@ -218,7 +213,7 @@ def main():
 
     #Radau solve used as reference for error comparisons
     t_fine = np.linspace(0, 80, 5000)
-    ref = solve_ivp(seir, t_span_demo, y0_demo, args=seir_args,
+    ref = solve_ivp(seir, (t0_demo, tf_demo), y0_demo, args=seir_args,
                     t_eval=t_fine, method='Radau', rtol=1e-12, atol=1e-14)
     ref_interp = interp1d(ref.t, ref.y, axis=1, kind='cubic') #interpolator for comparing at arbitrary times
     print("  Done.")
@@ -268,7 +263,7 @@ def main():
         ax.plot(ref.t, ref.y[2], 'k-', lw=2, label='Reference (Radau)')
         info = SOLVERS[name]
         for dt_v, ls_v in zip(dt_vals, [':', '-.', '--']):
-            ts, ys = info['fn'](seir, t_span_demo, y0_demo, dt_v, args=seir_args)
+            ts, ys = info['fn'](seir, t0_demo, tf_demo, y0_demo, dt_v, args=seir_args)
             ax.plot(ts, np.clip(ys[:, 2], -0.3, 0.6),
                     color=info['color'], ls=ls_v, alpha=0.8,
                     label=f'dt={dt_v}')
@@ -289,7 +284,7 @@ def main():
         ax.plot(ref.t, ref.y[2], 'k-', lw=2, label='Reference (Radau)')
         info = SOLVERS[name]
         for dt_v, ls_v in zip(dt_vals, [':', '-.', '--']):
-            ts, ys = info['fn'](seir, t_span_demo, y0_demo, dt_v, args=seir_args)
+            ts, ys = info['fn'](seir, t0_demo, tf_demo, y0_demo, dt_v, args=seir_args)
             ax.plot(ts, ys[:, 2], color=info['color'], ls=ls_v, alpha=0.8,
                     label=f'dt={dt_v}')
         ax.set_xlabel("Days")
@@ -304,7 +299,7 @@ def main():
     dt_cmp = 0.1
     for name, info in SOLVERS.items():
         try:
-            ts, ys = info['fn'](seir, t_span_demo, y0_demo, dt_cmp, args=seir_args)
+            ts, ys = info['fn'](seir, t0_demo, tf_demo, y0_demo, dt_cmp, args=seir_args)
             ax.plot(ts, np.clip(ys[:, 2], -0.3, 0.6),
                     color=info['color'], ls=info['ls'], alpha=0.85, label=name)
         except Exception as e:
@@ -331,7 +326,7 @@ def main():
         for name, info in SOLVERS.items():
             try:
                 t0_timer = time.perf_counter()
-                ts, ys = info['fn'](seir, t_span_demo, y0_demo, dt, args=seir_args)
+                ts, ys = info['fn'](seir, t0_demo, tf_demo, y0_demo, dt, args=seir_args)
                 elapsed = time.perf_counter() - t0_timer
                 #compare points within the reference solution's domain
                 mask = (ts >= ref.t[0]) & (ts <= ref.t[-1])
